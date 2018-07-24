@@ -2150,7 +2150,7 @@ var menu = $.widget( "ui.menu", {
 			// them (focus should always stay on UL during navigation).
 			"mousedown .ui-menu-item": function( event ) {
 				event.preventDefault();
-			},
+            },
 			"click .ui-menu-item": function( event ) {
 				var target = $( event.target );
 				if ( !this.mouseHandled && target.not( ".ui-state-disabled" ).length ) {
@@ -3902,8 +3902,9 @@ $.extend(Datepicker.prototype, {
 	/* Create a new instance object. */
 	_newInst: function(target, inline) {
 		var id = target[0].id.replace(/([^A-Za-z0-9_\-])/g, "\\\\$1"); // escape jQuery meta chars
-		return {id: id, input: target, // associated target
-			selectedDay: 0, selectedMonth: 0, selectedYear: 0, // current selection
+        return {
+            id: id, input: target, // associated target
+            selectedDay: 0, selectedMonth: 0, selectedYear: 0, selectedChk: false, // current selection
 			drawMonth: 0, drawYear: 0, // month being drawn
 			inline: inline, // is datepicker inline or not
 			dpDiv: (!inline ? this.dpDiv : // presentation div
@@ -4709,7 +4710,34 @@ $.extend(Datepicker.prototype, {
 
 		this._notifyChange(inst);
 		this._adjustDate(target);
-	},
+    },
+
+    _selectWeekly: function (id, month, year)
+    {
+        alert(date.getDay());
+        //[date.getDay() == 1, ""]
+    },
+
+    _selectMonth: function (id, month, year)
+    {
+        $('#ThisMonth' + month + year).prop("checked", true);
+        var yy = $('#ThisMonth' + month + year).prop("checked");
+        alert('checked:' + yy);
+        var date = new Date(year, month + 1, 1);
+        //alert(date.getFullYear() + '/' + date.getMonth() + '/' + date.getDate());  
+        var MonthLastDay = new Date(date - 86400000);
+        //alert(MonthLastDay.getFullYear() + '/' + (MonthLastDay.getMonth() + 1) + '/' + MonthLastDay.getDate());
+        //$('tr').find('td[data-month=' + MonthLastDay.getMonth() + '][data-year=' + date.getFullYear() + ']').each(function () {
+        //    this._selectDay('#mdp-demo1', MonthLastDay.getMonth() + 1, MonthLastDay.getFullYear(), $(this).find('a').innerHTML, this);
+        //});
+        for (var i = date.getDate(); i <= MonthLastDay.getDate(); i++) {
+            //alert(date.getFullYear() + '/' + (MonthLastDay.getMonth() + 1) + '/' + i);
+            var count = i;
+            //var x = $('td[data-month=' + MonthLastDay.getMonth() + '][data-year=' + date.getFullYear() + ']').eq(count - 1).html();
+            //alert(x);
+            this._selectDay(id, MonthLastDay.getMonth(), MonthLastDay.getFullYear(), $('td[data-month=' + MonthLastDay.getMonth() + '][data-year=' + date.getFullYear() + ']').eq(count - 1));
+        }
+    },
 
 	/* Action for selecting a day. */
 	_selectDay: function(id, month, year, td) {
@@ -4720,7 +4748,8 @@ $.extend(Datepicker.prototype, {
 			return;
 		}
 
-		inst = this._getInst(target[0]);
+        inst = this._getInst(target[0]);
+        inst.selectedChk = $('#ThisMonth' + month + year).prop("checked");
 		inst.selectedDay = inst.currentDay = $("a", td).html();
 		inst.selectedMonth = inst.currentMonth = month;
 		inst.selectedYear = inst.currentYear = year;
@@ -5323,7 +5352,16 @@ $.extend(Datepicker.prototype, {
 				selectYear: function () {
 					$.datepicker._selectMonthYear(id, this, "Y");
 					return false;
-				}
+                },
+                selectThisMonth: function () {
+                    $.datepicker._selectMonth(id, +this.getAttribute("data-month"), +this.getAttribute("data-year"));
+                    return false;
+                },
+                selectMonthWeekly: function ()
+                {
+                    $.datepicker._selectWeekly(id, +this.getAttribute("data-month"), +this.getAttribute("data-year"));
+                    return false;
+                }
 			};
 			$(this).bind(this.getAttribute("data-event"), handler[this.getAttribute("data-handler")]);
 		});
@@ -5450,8 +5488,8 @@ $.extend(Datepicker.prototype, {
 				thead = (showWeek ? "<th class='ui-datepicker-week-col'>" + this._get(inst, "weekHeader") + "</th>" : "");
 				for (dow = 0; dow < 7; dow++) { // days of the week
 					day = (dow + firstDay) % 7;
-					thead += "<th scope='col'" + ((dow + firstDay + 6) % 7 >= 5 ? " class='ui-datepicker-week-end'" : "") + ">" +
-						"<span title='" + dayNames[day] + "'>" + dayNamesMin[day] + "</span></th>";
+                    thead += "<th scope='col'" + ((dow + firstDay + 6) % 7 >= 5 ? " class='ui-datepicker-week-end'" : "") + ">" +
+                        "<input type='checkbox' drawMonth = '" + drawMonth + "' drawYear = '" + drawYear + "' data-event='click' data-handler='selectMonthWeekly' /><span title='" + dayNames[day] + "'>" + dayNamesMin[day] + "</span></th>";
 				}
 				calender += thead + "</tr></thead><tbody>";
 				daysInMonth = this._getDaysInMonth(drawYear, drawMonth);
@@ -5517,11 +5555,12 @@ $.extend(Datepicker.prototype, {
 	_generateMonthYearHeader: function(inst, drawMonth, drawYear, minDate, maxDate,
 			secondary, monthNames, monthNamesShort) {
 
-		var inMinYear, inMaxYear, month, years, thisYear, determineYear, year, endYear,
-			changeMonth = this._get(inst, "changeMonth"),
-			changeYear = this._get(inst, "changeYear"),
-			showMonthAfterYear = this._get(inst, "showMonthAfterYear"),
-			html = "<div class='ui-datepicker-title'>",
+        var inMinYear, inMaxYear, month, years, thisYear, determineYear, year, endYear,
+            changeMonth = this._get(inst, "changeMonth"),
+            changeYear = this._get(inst, "changeYear"),
+            showMonthAfterYear = this._get(inst, "showMonthAfterYear"),
+            chk = inst.selectedChk == true ? "checked='checked'" : "",
+            html = "<div class='ui-datepicker-title'><input id='ThisMonth" + drawMonth + drawYear + "' type='checkbox' data-month=" + drawMonth + " data-year=" + drawYear + " data-event='click' data-handler='selectThisMonth' " + chk + "/>",
 			monthHtml = "";
 
 		// month selection
@@ -5707,9 +5746,10 @@ $.extend(Datepicker.prototype, {
  * Global datepicker_instActive, set by _updateDatepicker allows the handlers to find their way back to the active picker.
  */
 function datepicker_bindHover(dpDiv) {
-	var selector = "button, .ui-datepicker-prev, .ui-datepicker-next, .ui-datepicker-calendar td a";
+    var selector = "button, .ui-datepicker-prev, .ui-datepicker-next, .ui-datepicker-calendar td a";
 	return dpDiv.delegate(selector, "mouseout", function() {
-			$(this).removeClass("ui-state-hover");
+        $(this).removeClass("ui-state-hover");
+        $(this).val();
 			if (this.className.indexOf("ui-datepicker-prev") !== -1) {
 				$(this).removeClass("ui-datepicker-prev-hover");
 			}
